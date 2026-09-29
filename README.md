@@ -47,4 +47,12 @@ La aplicación no almacena los datos en un archivo, no envía información por i
 - `VerificadorTarjetas.java`: interfaz Swing y validaciones.
 - `VerificadorTarjetas.jar`: versión ejecutable con Java 17+.
 
+Para generar tres capturas reproducibles de la interfaz con los datos de prueba:
+
+```bash
+java -jar VerificadorTarjetas.jar --capture capturas
+```
+
+El programa crea `01_inicio.png`, `02_formato_valido.png` y `03_luhn_no_cumple.png` en esa carpeta. Esta opción renderiza los componentes reales de Swing sin abrir la ventana.
+
 Referencias: [Visa, identificación de la red mediante IIN](https://design.visa.com/patterns/card-input/), [Visa, atributos de BIN](https://developer.visa.com/capabilities/visa-bin-attribute-sharing-service/faq) y [Stripe, números de prueba y Luhn](https://docs.stripe.com/testing).
