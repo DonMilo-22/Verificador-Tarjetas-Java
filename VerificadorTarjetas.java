@@ -4,6 +4,9 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import javax.imageio.ImageIO;
 import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,13 +22,13 @@ public class VerificadorTarjetas {
     private static final Color BAD = new Color(255, 137, 132);
     private static final Color ACCENT = new Color(138, 202, 235);
 
-    private final JFrame frame = new JFrame("Verificador de tarjetas | Aula");
+    private JFrame frame;
     private final JTextField number = new JTextField();
     private final JTextField expiry = new JTextField();
     private final JPasswordField cvc = new JPasswordField();
     private final JCheckBox demo = new JCheckBox("Mostrar datos simulados de los ejemplos");
     private final JLabel previewBrand = label("RED POR IDENTIFICAR", 12, Font.BOLD, MUTED);
-    private final JLabel previewNumber = label("••••  ••••  ••••  ••••", 24, Font.BOLD, INK);
+    private final JLabel previewNumber = label("••••  ••••  ••••  ••••", 21, Font.BOLD, INK);
     private final JLabel previewExpiry = label("MM/AA", 14, Font.PLAIN, INK);
     private final JLabel previewIssuer = label("Emisor: sin identificar", 14, Font.PLAIN, INK);
     private final JLabel previewType = label("Tipo: sin identificar", 14, Font.PLAIN, INK);
@@ -36,12 +39,27 @@ public class VerificadorTarjetas {
     private boolean formatting;
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new VerificadorTarjetas().show());
+        if (args.length == 2 && args[0].equals("--capture")) {
+            System.setProperty("java.awt.headless", "true");
+            try { new VerificadorTarjetas().capture(new File(args[1])); }
+            catch (Exception e) { throw new RuntimeException("No se pudieron crear las capturas", e); }
+        } else {
+            SwingUtilities.invokeLater(() -> new VerificadorTarjetas().show());
+        }
     }
 
     private void show() {
+        frame = new JFrame("Verificador de tarjetas | Aula");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setMinimumSize(new Dimension(760, 680));
+        frame.setContentPane(buildPanel());
+        frame.setSize(1080, 760);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+        update();
+    }
+
+    private JPanel buildPanel() {
         JPanel root = new JPanel(new BorderLayout(26, 0));
         root.setBackground(BG);
         root.setBorder(new EmptyBorder(28, 30, 26, 30));
@@ -68,11 +86,40 @@ public class VerificadorTarjetas {
         JLabel footer = label("Formato válido ≠ tarjeta existente. No se realizan cobros ni consultas al banco.", 12, Font.PLAIN, MUTED);
         footer.setBorder(new EmptyBorder(22, 0, 0, 0));
         root.add(footer, BorderLayout.SOUTH);
-        frame.setContentPane(root);
-        frame.setSize(1080, 760);
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+        return root;
+    }
+
+    private void capture(File folder) throws Exception {
+        if (!folder.exists() && !folder.mkdirs()) throw new IllegalStateException("No se pudo crear el directorio");
+        JPanel root = buildPanel();
+        root.setSize(1080, 760);
+        root.doLayout();
+        layoutChildren(root);
         update();
+        saveCapture(root, new File(folder, "01_inicio.png"));
+        number.setText("4242 4242 4242 4242");
+        expiry.setText("12/29");
+        cvc.setText("123");
+        update();
+        saveCapture(root, new File(folder, "02_formato_valido.png"));
+        number.setText("4242 4242 4242 4241");
+        update();
+        saveCapture(root, new File(folder, "03_luhn_no_cumple.png"));
+    }
+
+    private static void layoutChildren(Container parent) {
+        parent.doLayout();
+        for (Component child : parent.getComponents())
+            if (child instanceof Container) layoutChildren((Container) child);
+    }
+
+    private static void saveCapture(JPanel panel, File path) throws Exception {
+        layoutChildren(panel);
+        BufferedImage image = new BufferedImage(panel.getWidth(), panel.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        panel.printAll(graphics);
+        graphics.dispose();
+        ImageIO.write(image, "png", path);
     }
 
     private JPanel left() {
@@ -92,6 +139,7 @@ public class VerificadorTarjetas {
         JLabel numberLabel = label("NÚMERO DE TARJETA", 11, Font.BOLD, MUTED);
         numberLabel.setAlignmentX(0);
         previewNumber.setAlignmentX(0);
+        previewNumber.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
         middle.add(numberLabel);
         middle.add(Box.createVerticalStrut(13));
         middle.add(previewNumber);
@@ -105,6 +153,10 @@ public class VerificadorTarjetas {
         JPanel bottom = new JPanel();
         bottom.setOpaque(false);
         bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
+        previewIssuer.setAlignmentX(0);
+        previewType.setAlignmentX(0);
+        previewIssuer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+        previewType.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
         bottom.add(previewIssuer);
         bottom.add(Box.createVerticalStrut(8));
         bottom.add(previewType);
@@ -151,6 +203,8 @@ public class VerificadorTarjetas {
         box.add(Box.createVerticalStrut(19));
         headline.setAlignmentX(0);
         explanation.setAlignmentX(0);
+        headline.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        explanation.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
         box.add(headline);
         box.add(Box.createVerticalStrut(5));
         box.add(explanation);
